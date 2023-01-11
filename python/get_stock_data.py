@@ -20,7 +20,7 @@ def update_sp500_tickers(path: str, folder: str):
         update_sp500_tickers(folder, filename)
 
 
-def get_sp500_tickers(path) -> List[str]:
+def get_sp500_tickers(path: str) -> List[str]:
     try:
         with open(path, 'r') as file:
             contents = file.readline()
@@ -30,13 +30,33 @@ def get_sp500_tickers(path) -> List[str]:
         print("[Error] List of S&P 500 Tickers has not been downloaded")
 
 
-def get_all_stocks_histories(ticker_list):
-    all_data = []
+def downlaod_stock_histories(path: str, ticker_list: List[str]):
     for tick in ticker_list:
         data = yf.Ticker(tick).history(period='max')
         data = data[data['Open'] != 0]
-        all_data.append(data)
-    return all_data
+        try:
+            data.to_csv(path + "/individual_stock_data/" + tick + ".csv")
+        except FileNotFoundError:
+            os.mkdir(path + "/individual_stock_data")
+            downlaod_stock_histories(path, ticker_list)
+
+
+def get_all_stocks_histories(path: str):
+    local_path = path + "/individual_stock_data/"
+    data = []
+    try:
+
+        files = os.listdir(path + "/individual_stock_data/")
+        for file in files:
+            data.append(pd.read_csv(local_path + file))
+        return data
+
+    except FileNotFoundError:
+        print("[Error] Path '{}' doesn't exist!")
+
+
+
+
 
 
 folder = "data"
@@ -45,6 +65,9 @@ path = os.path.join(os.pardir, folder + "/" + filename)
 
 # update_sp500_tickers(path, folder)
 sp500_tickers = get_sp500_tickers(path)
-histories = get_all_stocks_histories(sp500_tickers)
+downlaod_stock_histories(os.pardir + "/data/", sp500_tickers[:10])
+histories = get_all_stocks_histories(os.pardir + "/data/")
+print(histories)
+# histories = get_all_stocks_histories(sp500_tickers[:10])
 
 
