@@ -30,19 +30,21 @@ def get_sp500_tickers(path) -> List[str]:
         print("[Error] List of S&P 500 Tickers has not been downloaded")
 
 
+def get_all_stocks_histories(ticker_list):
+    all_data = []
+    for tick in ticker_list:
+        data = yf.Ticker(tick).history(period='max')
+        data = data[data['Open'] != 0]
+        all_data.append(data)
+    return all_data
+
+
 folder = "data"
 filename = "sp500_tickers.csv"
 path = os.path.join(os.pardir, folder + "/" + filename)
-update_sp500_tickers(path, folder)
+
+# update_sp500_tickers(path, folder)
 sp500_tickers = get_sp500_tickers(path)
-print(sp500_tickers)
+histories = get_all_stocks_histories(sp500_tickers)
 
-print(yf.Ticker(sp500_tickers[0]).info)
-# all_stocks_data = []
-#
-# all_stocks_data.append(yf.Ticker('RHT'))
-# for tick in s_and_p_tickers:
-#     all_data = yf.Ticker(tick)
-#     all_stocks_data.append(all_data)
 
-# print(all_stocks_data[0].info)
