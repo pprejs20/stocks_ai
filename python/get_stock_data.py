@@ -55,16 +55,49 @@ def get_all_stocks_histories(path: str):
         print("[Error] Path '{}' doesn't exist!")
 
 
-
-
-
-
+print("Starting...")
 folder = "data"
 filename = "sp500_tickers.csv"
 path = os.path.join(os.pardir, folder + "/" + filename)
 
+# Un-comment this code to download latest training data
 # update_sp500_tickers(path, folder)
+
 sp500_tickers = get_sp500_tickers(path)
+data = pd.read_csv(os.pardir + "/data/individual_stock_data/XOM.csv")
+data['gold_std'] = data['Open'].shift(-1)
+true_data = data[['Open', 'gold_std']]
+true_data = true_data[:-1]
+
+# Assume that your DataFrame is called 'df'
+
+# Calculate moving averages
+true_data['ma10'] = true_data['Open'].rolling(window=10).mean()
+true_data['ma20'] = true_data['Open'].rolling(window=20).mean()
+
+# Calculate Bollinger Bands
+true_data['std20'] = true_data['Open'].rolling(window=20).std()
+true_data['upper_band'] = true_data['ma20'] + 2 * true_data['std20']
+true_data['lower_band'] = true_data['ma20'] - 2 * true_data['std20']
+
+# Calculate Relative Strength Index (RSI)
+delta = true_data['Open'].diff()
+gain = delta.where(delta > 0, 0)
+loss = -delta.where(delta < 0, 0)
+avg_gain = gain.rolling(window=14).mean()
+avg_loss = loss.rolling(window=14).mean()
+rs = avg_gain / avg_loss
+true_data['rsi'] = 100 - (100 / (1 + rs))
+print(true_data.columns.values)
+true_data = true_data[20:]
+
+# true_data = true_data[-2000:]
+
+# print(true_data[:-1])
+features = np.array(true_data[['Open', 'ma10', 'ma20', 'std20', 'upper_band', 'lower_band']])
+labels = np.array(true_data['gold_std'])
+
+_tickers = get_sp500_tickers(path)
 downlaod_stock_histories(os.pardir + "/data/", sp500_tickers[:10])
 histories = get_all_stocks_histories(os.pardir + "/data/")
 print(histories)
