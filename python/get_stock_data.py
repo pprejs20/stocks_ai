@@ -69,6 +69,9 @@ def get_all_stocks_histories(path: str):
     except FileNotFoundError:
         print("[Error] Path '{}' doesn't exist!")
 
+def get_one_record(opening_prices):
+    pass
+
 print("Starting...")
 folder = "data"
 filename = "sp500_tickers.csv"
@@ -101,16 +104,18 @@ avg_loss = loss.rolling(window=14).mean()
 rs = avg_gain / avg_loss
 true_data['rsi'] = 100 - (100 / (1 + rs))
 print(true_data.columns.values)
-
+true_data = true_data[20:]
 
 # true_data = true_data[-2000:]
 
 # print(true_data[:-1])
-prices = np.array(true_data['Open'])
+features = np.array(true_data[['Open', 'ma10', 'ma20', 'std20', 'upper_band', 'lower_band']])
 labels = np.array(true_data['gold_std'])
 
 # print(prices.reshape(-1, 1))
-x_train, x_test, y_train, y_test = train_test_split(prices, labels, test_size=0.2, random_state=42)
+x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+print(x_train.shape)
+print(y_train.shape)
 
 # model = LinearRegression()
 # model.fit(x_train.reshape(-1, 1), y_train.reshape(-1, 1))
@@ -124,7 +129,7 @@ print("Creating sequential model...")
 model = tf.keras.Sequential()
 
 # Add a dense layer with input shape 1 and output shape 64
-model.add(tf.keras.layers.Dense(64, input_shape=(1,), activation='relu'))
+model.add(tf.keras.layers.Dense(64, input_shape=(6,), activation='relu'))
 
 # Add a dense layer with output shape 64
 model.add(tf.keras.layers.Dense(64, activation='relu'))
@@ -136,10 +141,10 @@ print("Compiling..")
 model.compile(optimizer='adam', loss='mean_squared_error')
 print("Training...")
 # Fit the model with the training data
-model.fit(x_train.reshape(-1,1), y_train.reshape(-1,1), epochs=50, batch_size=32)
+model.fit(x_train, y_train, epochs=50, batch_size=32)
 print("Done training ...")
 # Make predictions on the test data
-predictions = model.predict(x_test.reshape(-1,1))
+predictions = model.predict(x_test)
 print("Loading up predictions!")
 
 results = pd.DataFrame({'preds': predictions.flatten(), 'truths': y_test})
@@ -156,8 +161,8 @@ print("R2: " + str(r2))
 # print("Predict: 108.470001220703")
 # my_pred = model.predict([[y_test[0]]])
 # print("prev prediction {}   ,   second pred: {} , original num: {}".format(predictions.flatten()[0], my_pred[0], y_test[0]))
-my_pred = model.predict([[35.188521]])
-print(my_pred)
+# my_pred = model.predict([[35.188521]])
+# print(my_pred)
 
 
 
