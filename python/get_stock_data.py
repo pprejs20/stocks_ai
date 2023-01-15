@@ -80,7 +80,30 @@ data = pd.read_csv(os.pardir + "/data/individual_stock_data/XOM.csv")
 data['gold_std'] = data['Open'].shift(-1)
 true_data = data[['Open', 'gold_std']]
 true_data = true_data[:-1]
-true_data = true_data[-2000:]
+
+# Assume that your DataFrame is called 'df'
+
+# Calculate moving averages
+true_data['ma10'] = true_data['Open'].rolling(window=10).mean()
+true_data['ma20'] = true_data['Open'].rolling(window=20).mean()
+
+# Calculate Bollinger Bands
+true_data['std20'] = true_data['Open'].rolling(window=20).std()
+true_data['upper_band'] = true_data['ma20'] + 2 * true_data['std20']
+true_data['lower_band'] = true_data['ma20'] - 2 * true_data['std20']
+
+# Calculate Relative Strength Index (RSI)
+delta = true_data['Open'].diff()
+gain = delta.where(delta > 0, 0)
+loss = -delta.where(delta < 0, 0)
+avg_gain = gain.rolling(window=14).mean()
+avg_loss = loss.rolling(window=14).mean()
+rs = avg_gain / avg_loss
+true_data['rsi'] = 100 - (100 / (1 + rs))
+print(true_data.columns.values)
+
+
+# true_data = true_data[-2000:]
 
 # print(true_data[:-1])
 prices = np.array(true_data['Open'])
