@@ -138,8 +138,7 @@ def save_training_data(data, path: str):
 
 # This function isn't going to need to be written many times, it will make all the training data from all the stocks
 # Path will be where the csv file with all the data will be saved
-def generate_and_save_all_training_data(path: str):
-    sp500_tickers = get_sp500_tickers(path)
+def generate_and_save_all_training_data(tickers_list: list[str], path: str):
     all_training_data = get_all_tickers_training_data(sp500_tickers)
     print(all_training_data)
     print("Type: {}".format(type(all_training_data)))
@@ -151,11 +150,12 @@ print("Starting...")
 folder = "data"
 filename = "sp500_tickers.csv"
 path = os.path.join(os.pardir, folder + "/" + filename)
+sp500_tickers = get_sp500_tickers(path)
 
 # Un-comment this code to download latest training data
 # update_sp500_tickers(path, folder)
 
-generate_and_save_all_training_data("full_training_data.csv")
+generate_and_save_all_training_data(sp500_tickers, "full_training_data.csv")
 
 
 
