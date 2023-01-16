@@ -57,7 +57,8 @@ def get_all_stocks_histories(path: str):
     except FileNotFoundError:
         print("[Error] Path '{}' doesn't exist!")
 
-def find_best_estimators(x_train, y_train, x_test, y_test):
+
+def find_best_estimators(x_train: np.array, y_train: np.array, x_test: np.array, y_test: np.array):
     estimators = [5, 10, 25, 30, 50, 60, 75, 100]
     accuracies = []
     for est in estimators:
@@ -75,6 +76,77 @@ def find_best_estimators(x_train, y_train, x_test, y_test):
     return accuracies[_index], estimators[_index]
 
 
+# Returns a numpy array object, not dataframe!
+# Gets data for one stock using only its ticker, the data needs to be downloaded already
+def get_one_stocks_data(ticker: str) -> np.array:
+    data = pd.read_csv(os.pardir + "/data/individual_stock_data/{}.csv".format(ticker))
+    full_data = calculate_technical_indicators(data[['Open']])
+    final_data = add_labels_to_data(full_data)
+    return final_data
+
+
+# Returns a numpy array object, not dataframe!
+# Adds labels to a stocks data
+def add_labels_to_data(data: pd.DataFrame) -> np.array:
+    data['label'] = str('NaN')
+    np_array_data = np.array(data)
+    for i in range(len(np_array_data) - 1):
+        if np_array_data[i][0] <= np_array_data[i + 1][0]:
+            np_array_data[i][-1] = "up"
+        else:
+            np_array_data[i][-1] = "down"
+    return np_array_data[:-1]
+
+# Takes a stocks open prices and calculates all training indicators, adds them into the data frame
+def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    data['ma10'] = data['Open'].rolling(window=10).mean()
+    data['ma20'] = data['Open'].rolling(window=20).mean()
+
+    # Calculate Bollinger Bands
+    data['std20'] = data['Open'].rolling(window=20).std()
+    data['upper_band'] = data['ma20'] + 2 * data['std20']
+    data['lower_band'] = data['ma20'] - 2 * data['std20']
+
+    # Calculate Relative Strength Index (RSI)
+    delta = data['Open'].diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window=14).mean()
+    avg_loss = loss.rolling(window=14).mean()
+    rs = avg_gain / avg_loss
+    data['rsi'] = 100 - (100 / (1 + rs))
+    data = data[20:]
+    return data
+
+# Gets training data for each ticker, and produces a single list of data
+def get_all_tickers_training_data(ticker_list):
+    data = get_one_stocks_data(ticker_list[0])
+    for tick in ticker_list[1:]:
+        if tick == "":
+            continue
+        one_data = get_one_stocks_data(tick)
+        print(one_data.shape)
+        data = np.concatenate((data, one_data), axis=0)
+        print(data.shape)
+    return data
+
+
+def save_training_data(data, path: str):
+    df = pd.DataFrame(data, columns=['Open', 'ma10', 'ma20', 'std20', 'upper_band', 'lower_band', 'rsi', 'label'])
+    df.to_csv(path)
+
+
+# This function isn't going to need to be written many times, it will make all the training data from all the stocks
+# Path will be where the csv file with all the data will be saved
+def generate_and_save_all_training_data(path: str):
+    sp500_tickers = get_sp500_tickers(path)
+    all_training_data = get_all_tickers_training_data(sp500_tickers)
+    print(all_training_data)
+    print("Type: {}".format(type(all_training_data)))
+    print("Shape: {}".format(all_training_data.shape))
+    save_training_data(all_training_data, "full_training_data.csv")
+
+
 print("Starting...")
 folder = "data"
 filename = "sp500_tickers.csv"
@@ -83,42 +155,11 @@ path = os.path.join(os.pardir, folder + "/" + filename)
 # Un-comment this code to download latest training data
 # update_sp500_tickers(path, folder)
 
-
-sp500_tickers = get_sp500_tickers(path)
-data = pd.read_csv(os.pardir + "/data/individual_stock_data/XOM.csv")
-# data['gold_std'] = data['Open'].shift(-1)
-# true_data = data[['Open', 'gold_std']]
-true_data = data[['Open']]
+generate_and_save_all_training_data("full_training_data.csv")
 
 
-# Assume that your DataFrame is called 'df'
 
-# Calculate moving averages
-true_data['ma10'] = true_data['Open'].rolling(window=10).mean()
-true_data['ma20'] = true_data['Open'].rolling(window=20).mean()
-
-# Calculate Bollinger Bands
-true_data['std20'] = true_data['Open'].rolling(window=20).std()
-true_data['upper_band'] = true_data['ma20'] + 2 * true_data['std20']
-true_data['lower_band'] = true_data['ma20'] - 2 * true_data['std20']
-
-# Calculate Relative Strength Index (RSI)
-delta = true_data['Open'].diff()
-gain = delta.where(delta > 0, 0)
-loss = -delta.where(delta < 0, 0)
-avg_gain = gain.rolling(window=14).mean()
-avg_loss = loss.rolling(window=14).mean()
-rs = avg_gain / avg_loss
-true_data['rsi'] = 100 - (100 / (1 + rs))
-true_data = true_data[20:]
-true_data['label'] = str('NaN')
-np_array_data = np.array(true_data)
-for i in range(len(np_array_data) - 1):
-    if np_array_data[i][0] <= np_array_data[i+1][0]:
-        np_array_data[i][-1] = "up"
-    else:
-        np_array_data[i][-1] = "down"
-
+exit()
 np_array_data = np_array_data[:-1]
 labels = np_array_data[:, [7]]
 features = np_array_data[:, range(0, 7)]
