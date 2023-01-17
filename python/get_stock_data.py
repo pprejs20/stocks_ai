@@ -97,6 +97,7 @@ def add_labels_to_data(data: pd.DataFrame) -> np.array:
             np_array_data[i][-1] = "down"
     return np_array_data[:-1]
 
+
 # Takes a stocks open prices and calculates all training indicators, adds them into the data frame
 def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data['ma10'] = data['Open'].rolling(window=10).mean()
@@ -117,6 +118,7 @@ def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     data['rsi'] = 100 - (100 / (1 + rs))
     data = data[20:]
     return data
+
 
 # Gets training data for each ticker, and produces a single list of data
 def get_all_tickers_training_data(ticker_list):
@@ -155,16 +157,21 @@ sp500_tickers = get_sp500_tickers(path)
 # Un-comment this code to download latest training data
 # update_sp500_tickers(path, folder)
 
-generate_and_save_all_training_data(sp500_tickers, "full_training_data.csv")
+# Un-comment this code to regenerate the training data, if any data has been updated
+# generate_and_save_all_training_data(sp500_tickers, "full_training_data.csv")
 
+data = pd.read_csv("full_training_data.csv")
+data = data.dropna()
+data = np.array(data)
+data = data[:, [1, 2, 3, 4, 5, 6, 7, 8]]
 
+print(data)
+print(data.shape)
 
-exit()
-np_array_data = np_array_data[:-1]
-labels = np_array_data[:, [7]]
-features = np_array_data[:, range(0, 7)]
-print(features)
-print(labels)
+labels = data[:, [7]]
+features = data[:, range(0, 7)]
+# print(features)
+# print(labels)
 
 # print(np_array_data[:-1, [0, 7]])
 # df = pd.DataFrame({"Open": np_array_data[:, [0]],
@@ -181,19 +188,19 @@ print(labels)
 x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
 
 #Create an instance of the classifier
-# clf1 = RandomForestClassifier(n_estimators=100) #random_state=42
-#
-# #Fit the classifier to the training data
-# clf1.fit(x_train, y_train)
-#
-# #Make predictions on the test data
-# predictions = clf1.predict(x_test)
-#
-# #Evaluate the performance of the classifier
-# print("Random Forest Accuracy:", accuracy_score(y_test, predictions))
+clf1 = RandomForestClassifier(n_estimators=100) #random_state=42
+
+#Fit the classifier to the training data
+clf1.fit(x_train, y_train)
+
+#Make predictions on the test data
+predictions = clf1.predict(x_test)
+
+#Evaluate the performance of the classifier
+print("Random Forest Accuracy:", accuracy_score(y_test, predictions))
 # print("Random State: ", clf1.random_state)
 
-accuracy, estimators = find_best_estimators(x_train, y_train, x_test, y_test)
-print("Best accuracy: ", accuracy)
-print("Best estimators: ", estimators)
+# accuracy, estimators = find_best_estimators(x_train, y_train, x_test, y_test)
+# print("Best accuracy: ", accuracy)
+# print("Best estimators: ", estimators)
 
