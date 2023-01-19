@@ -8,6 +8,8 @@ from typing import *
 from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
+from keras.layers import Dense
+from keras.models import Sequential
 
 
 def update_sp500_tickers(path: str, folder: str):
@@ -31,6 +33,11 @@ def get_sp500_tickers(path: str) -> List[str]:
             return sp500_tickers
     except FileNotFoundError:
         print("[Error] List of S&P 500 Tickers has not been downloaded")
+
+
+def download_stock_history(ticker: str):
+    path = os.path.join(os.pardir, "data/")
+    downlaod_stock_histories(path, [ticker])
 
 
 def downlaod_stock_histories(path: str, ticker_list: List[str]):
@@ -80,7 +87,7 @@ def find_best_estimators(x_train: np.array, y_train: np.array, x_test: np.array,
 # Gets data for one stock using only its ticker, the data needs to be downloaded already
 def get_one_stocks_data(ticker: str) -> np.array:
     data = pd.read_csv(os.pardir + "/data/individual_stock_data/{}.csv".format(ticker))
-    full_data = calculate_technical_indicators(data[['Open']])
+    full_data = calculate_technical_indicators(data[['Open', 'Close', 'Low', 'High']])
     final_data = add_labels_to_data(full_data)
     return final_data
 
@@ -116,8 +123,18 @@ def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     avg_loss = loss.rolling(window=14).mean()
     rs = avg_gain / avg_loss
     data['rsi'] = 100 - (100 / (1 + rs))
+
+    data['ema10'] = data['Open'].ewm(span=10).mean()
+    data['macd'] = data['Open'].ewm(span=12).mean() - data['Open'].ewm(span=26).mean()
+    data['roc'] = data['Open'].pct_change(periods=12)
+
+    data['stoch_k'] = (data['Close'] - data['Low'].rolling(window=14).min()) / (
+                data['High'].rolling(window=14).max() - data['Low'].rolling(window=14).min())
+    data['stoch_d'] = data['stoch_k'].rolling(window=3).mean()
+
     data = data[20:]
     return data
+
 
 
 # Gets training data for each ticker, and produces a single list of data
@@ -134,73 +151,19 @@ def get_all_tickers_training_data(ticker_list):
 
 
 def save_training_data(data, path: str):
-    df = pd.DataFrame(data, columns=['Open', 'ma10', 'ma20', 'std20', 'upper_band', 'lower_band', 'rsi', 'label'])
+    df = pd.DataFrame(data, columns=['Open', 'Close', 'Low', 'High', 'ma10', 'ma20', 'std20', 'upper_band',
+ 'lower_band', 'rsi', 'ema10', 'macd', 'roc', 'stoch_k', 'stoch_d', 'label'])
     df.to_csv(path)
 
 
 # This function isn't going to need to be written many times, it will make all the training data from all the stocks
 # Path will be where the csv file with all the data will be saved
 def generate_and_save_all_training_data(tickers_list: list[str], path: str):
-    all_training_data = get_all_tickers_training_data(sp500_tickers)
+    all_training_data = get_all_tickers_training_data(tickers_list)
     print(all_training_data)
     print("Type: {}".format(type(all_training_data)))
     print("Shape: {}".format(all_training_data.shape))
     save_training_data(all_training_data, "full_training_data.csv")
 
 
-print("Starting...")
-folder = "data"
-filename = "sp500_tickers.csv"
-path = os.path.join(os.pardir, folder + "/" + filename)
-sp500_tickers = get_sp500_tickers(path)
-
-# Un-comment this code to download latest training data
-# update_sp500_tickers(path, folder)
-
-# Un-comment this code to regenerate the training data, if any data has been updated
-# generate_and_save_all_training_data(sp500_tickers, "full_training_data.csv")
-
-data = pd.read_csv("full_training_data.csv")
-data = data.dropna()
-data = np.array(data)
-data = data[:, [1, 2, 3, 4, 5, 6, 7, 8]]
-
-print(data)
-print(data.shape)
-
-labels = data[:, [7]]
-features = data[:, range(0, 7)]
-# print(features)
-# print(labels)
-
-# print(np_array_data[:-1, [0, 7]])
-# df = pd.DataFrame({"Open": np_array_data[:, [0]],
-#                    "ma10": np_array_data[:, [1]],
-#                    "ma20": np_array_data[:, [2]],
-#                    "std20": np_array_data[:, [3]],
-#                    "upper_band": np_array_data[:, [4]],
-#                    "lower_band": np_array_data[:, [5]],
-#                    "rsi": np_array_data[:, [6]],
-#                    "label": np_array_data[:, [7]]
-#                    })
-#
-
-x_train, x_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
-
-#Create an instance of the classifier
-clf1 = RandomForestClassifier(n_estimators=100) #random_state=42
-
-#Fit the classifier to the training data
-clf1.fit(x_train, y_train)
-
-#Make predictions on the test data
-predictions = clf1.predict(x_test)
-
-#Evaluate the performance of the classifier
-print("Random Forest Accuracy:", accuracy_score(y_test, predictions))
-# print("Random State: ", clf1.random_state)
-
-# accuracy, estimators = find_best_estimators(x_train, y_train, x_test, y_test)
-# print("Best accuracy: ", accuracy)
-# print("Best estimators: ", estimators)
 
