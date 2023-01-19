@@ -10,6 +10,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from keras.layers import Dense
 from keras.models import Sequential
+import warnings
 
 
 def update_sp500_tickers(path: str, folder: str):
@@ -40,9 +41,9 @@ def download_stock_history(ticker: str):
     downlaod_stock_histories(path, [ticker])
 
 
-def downlaod_stock_histories(path: str, ticker_list: List[str]):
+def downlaod_stock_histories(path: str, ticker_list: List[str], period: str = 'max', interval: str = "1d"):
     for tick in ticker_list:
-        data = yf.Ticker(tick).history(period='max')
+        data = yf.Ticker(tick).history(period=period, interval=interval)
         data = data[data['Open'] != 0]
         try:
             data.to_csv(path + "/individual_stock_data/" + tick + ".csv")
@@ -102,11 +103,13 @@ def add_labels_to_data(data: pd.DataFrame) -> np.array:
             np_array_data[i][-1] = "up"
         else:
             np_array_data[i][-1] = "down"
-    return np_array_data[:-1]
+    return np_array_data
 
 
 # Takes a stocks open prices and calculates all training indicators, adds them into the data frame
 def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
+    warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
+    pd.options.mode.chained_assignment = None
     data['ma10'] = data['Open'].rolling(window=10).mean()
     data['ma20'] = data['Open'].rolling(window=20).mean()
 
@@ -132,7 +135,7 @@ def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
                 data['High'].rolling(window=14).max() - data['Low'].rolling(window=14).min())
     data['stoch_d'] = data['stoch_k'].rolling(window=3).mean()
 
-    data = data[20:]
+    data = data
     return data
 
 
@@ -164,6 +167,5 @@ def generate_and_save_all_training_data(tickers_list: list[str], path: str):
     print("Type: {}".format(type(all_training_data)))
     print("Shape: {}".format(all_training_data.shape))
     save_training_data(all_training_data, "full_training_data.csv")
-
 
 
