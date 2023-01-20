@@ -26,7 +26,7 @@ def update_sp500_tickers(path: str, folder: str):
         update_sp500_tickers(folder, filename)
 
 
-def get_sp500_tickers(path: str) -> List[str]:
+def get_sp500_tickers(path: str = os.path.join(os.pardir, "data/sp500_tickers.csv")) -> List[str]:
     try:
         with open(path, 'r') as file:
             contents = file.readline()
@@ -41,8 +41,10 @@ def download_stock_history(ticker: str):
     downlaod_stock_histories(path, [ticker])
 
 
-def downlaod_stock_histories(path: str, ticker_list: List[str], period: str = 'max', interval: str = "1d"):
+def downlaod_stock_histories(path: str, ticker_list: List[str], period: str = '100y', interval: str = "1d"):
+    counter = 0
     for tick in ticker_list:
+        counter += 1
         data = yf.Ticker(tick).history(period=period, interval=interval)
         data = data[data['Open'] != 0]
         try:
@@ -89,6 +91,11 @@ def find_best_estimators(x_train: np.array, y_train: np.array, x_test: np.array,
 def get_one_stocks_data(ticker: str) -> np.array:
     data = pd.read_csv(os.pardir + "/data/individual_stock_data/{}.csv".format(ticker))
     full_data = calculate_technical_indicators(data[['Open', 'Close', 'Low', 'High']])
+    full_data['future_open'] = full_data['Open'].shift(-1)
+    # full_data = full_data[:-1]
+    # full_data['true_close'] = full_data['Close'].shift(-1)
+    print(full_data.columns.values)
+    print(full_data)
     final_data = add_labels_to_data(full_data)
     return final_data
 
@@ -99,7 +106,7 @@ def add_labels_to_data(data: pd.DataFrame) -> np.array:
     data['label'] = str('NaN')
     np_array_data = np.array(data)
     for i in range(len(np_array_data) - 1):
-        if np_array_data[i][0] <= np_array_data[i + 1][0]:
+        if np_array_data[i][1] <= np_array_data[i + 1][1]:
             np_array_data[i][-1] = "up"
         else:
             np_array_data[i][-1] = "down"
@@ -110,6 +117,7 @@ def add_labels_to_data(data: pd.DataFrame) -> np.array:
 def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
     pd.options.mode.chained_assignment = None
+
     data['ma10'] = data['Open'].rolling(window=10).mean()
     data['ma20'] = data['Open'].rolling(window=20).mean()
 
@@ -139,7 +147,6 @@ def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-
 # Gets training data for each ticker, and produces a single list of data
 def get_all_tickers_training_data(ticker_list):
     data = get_one_stocks_data(ticker_list[0])
@@ -161,7 +168,7 @@ def save_training_data(data, path: str):
 
 # This function isn't going to need to be written many times, it will make all the training data from all the stocks
 # Path will be where the csv file with all the data will be saved
-def generate_and_save_all_training_data(tickers_list: list[str], path: str):
+def generate_and_save_all_training_data(tickers_list: list[str]):
     all_training_data = get_all_tickers_training_data(tickers_list)
     print(all_training_data)
     print("Type: {}".format(type(all_training_data)))
