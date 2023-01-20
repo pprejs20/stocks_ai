@@ -4,6 +4,13 @@ from get_stock_data import *
 from keras.layers import Dense
 from keras.models import Sequential
 
+sp500_tickers = get_sp500_tickers()
+
+# path = os.path.join(os.pardir, "data/")
+# downlaod_stock_histories(path, sp500_tickers)
+
+generate_and_save_all_training_data(sp500_tickers)
+exit()
 print("Starting...")
 
 data = pd.read_csv("full_training_data.csv")
