@@ -1,22 +1,22 @@
 from keras import activations
 
 from get_stock_data import *
-from keras.layers import Dense
+from keras.layers import Dense, BatchNormalization
 from keras.models import Sequential
 
 sp500_tickers = get_sp500_tickers()
-
+#
 # path = os.path.join(os.pardir, "data/")
 # downlaod_stock_histories(path, sp500_tickers)
 
-generate_and_save_all_training_data(sp500_tickers)
-exit()
+# generate_and_save_all_training_data(sp500_tickers, filename="full_training_data3.csv")
+
 print("Starting...")
 
-data = pd.read_csv("full_training_data.csv")
+data = pd.read_csv("full_training_data3.csv")
 data = data.dropna()
 data = np.array(data)
-data = data[:, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]
+data = data[:, range(1, data.shape[1])]
 
 print(data)
 print(data.shape)
@@ -49,11 +49,23 @@ np.savetxt("testing_data.csv", joined_array, delimiter=',')
 # Original hidden layer:
 # model.add(Dense(16, activation=activations.relu))
 
+# model = Sequential()
+# model.add(Dense(16, input_dim=features.shape[1], activation='relu'))
+# model.add(Dense(8, activation=activations.relu))
+# # model.add(Dense(16, activation=activations.leaky_relu))
+# model.add(Dense(1, activation='sigmoid'))
+#
+# # Compile the model
+# model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
 model = Sequential()
 model.add(Dense(16, input_dim=features.shape[1], activation='relu'))
+model.add(BatchNormalization())
 model.add(Dense(8, activation=activations.relu))
+model.add(BatchNormalization())
 # model.add(Dense(16, activation=activations.leaky_relu))
 model.add(Dense(1, activation='sigmoid'))
+model.add(BatchNormalization())
 
 # Compile the model
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
@@ -61,7 +73,7 @@ model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy']
 # Original line of code
 # model.fit(x_train, y_train, epochs=10, batch_size=32)
 
-model.fit(x_train, y_train, epochs=2, batch_size=16)
+model.fit(x_train, y_train, epochs=50, batch_size=16)
 score = model.evaluate(x_test, y_test, verbose=1)
 model.save("models/trained_model_acc_{}.h5".format(score[1]))
 print("Loss: {} , Accuracy: {}".format(score[0], score[1]))
