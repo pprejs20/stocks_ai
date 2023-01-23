@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from keras.layers import Dense
 from keras.models import Sequential
 import warnings
+import threading
 
 
 def update_sp500_tickers(path: str, folder: str):
@@ -23,7 +24,7 @@ def update_sp500_tickers(path: str, folder: str):
 
     except FileNotFoundError:
         os.mkdir(os.path.join(os.pardir, folder))
-        update_sp500_tickers(folder, filename)
+        update_sp500_tickers(path, folder)
 
 
 def get_sp500_tickers(path: str = os.path.join(os.pardir, "data/sp500_tickers.csv")) -> List[str]:
@@ -36,27 +37,40 @@ def get_sp500_tickers(path: str = os.path.join(os.pardir, "data/sp500_tickers.cs
         print("[Error] List of S&P 500 Tickers has not been downloaded")
 
 
-def download_stock_history(path: str, ticker: str):
-    downlaod_stock_histories(path, [ticker])
+def download_stock_history(path: str, ticker: str, sem: threading.BoundedSemaphore,
+                           period: str = 'max', interval: str = "1d"):
+    try:
+        data = yf.Ticker(ticker).history(period=period, interval=interval)
+        data = data[data['Open'] != 0]
+        data.to_csv(path + "/individual_stock_data/" + ticker + ".csv")
+    # except FileNotFoundError:
+    #     os.mkdir(path + "/individual_stock_data")
+    #     download_stock_history(path, ticker, sem, period, interval)
+    finally:
+        sem.release()
 
-glob_total = 0
 
-
-def downlaod_stock_histories(path: str, ticker_list: List[str], period: str = 'max', interval: str = "1d"):
+def downlaod_stock_histories(path: str, ticker_list: List[str], no_of_threads: int = 50,
+                             period: str = 'max', interval: str = "1d"):
     counter = 0
-    global glob_total
+    sem = threading.BoundedSemaphore(no_of_threads)
+    threads = []
     for tick in ticker_list:
+        sem.acquire()
+        thread = threading.Thread(target=download_stock_history, args=(path, tick, sem,
+                                                                       period, interval),
+                                  daemon=True)
         counter += 1
         print(counter)
         print(tick)
-        data = yf.Ticker(tick).history(period=period, interval=interval)
-        data = data[data['Open'] != 0]
-        glob_total += data.shape[0]
-        try:
-            data.to_csv(path + "/individual_stock_data/" + tick + ".csv")
-        except FileNotFoundError:
-            os.mkdir(path + "/individual_stock_data")
-            downlaod_stock_histories(path, ticker_list)
+        thread.start()
+        threads.append(thread)
+
+    print(threading.active_count())
+    # Wait till all threads are finished
+    for t in threads:
+        t.join()
+
     print("done")
 
 
@@ -64,7 +78,6 @@ def get_all_stocks_histories(path: str):
     local_path = path + "/individual_stock_data/"
     data = []
     try:
-
         files = os.listdir(path + "/individual_stock_data/")
         for file in files:
             data.append(pd.read_csv(local_path + file))
