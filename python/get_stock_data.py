@@ -126,7 +126,7 @@ def add_labels_to_data(data: pd.DataFrame) -> np.array:
     np_array_data = np.array(data)
     for i in range(len(np_array_data) - 1):
         # if np_array_data[i][1] <= np_array_data[i + 1][1]:
-        if np_array_data[i][1] <= np_array_data[i + 1][1]:
+        if np_array_data[i][15] <= np_array_data[i][1]:
             np_array_data[i][-1] = "up"
         else:
             np_array_data[i][-1] = "down"
@@ -191,8 +191,8 @@ def calculate_technical_indicators(data: pd.DataFrame) -> pd.DataFrame:
 
 
 # Gets training data for each ticker, and produces a single list of data
-def get_all_tickers_training_data(ticker_list: list[str]):
-    data = get_one_stocks_data(ticker_list[0])[20:-1]
+def get_all_tickers_training_data(ticker_list: list[str], path: str = os.pardir + "/data/individual_stock_data/"):
+    data = get_one_stocks_data(ticker_list[0], path)[20:-1]
     for tick in ticker_list[1:]:
         # if tick == "":
         #     continue
@@ -216,7 +216,8 @@ def save_training_data(data, path: str):
 
 # This function isn't going to need to be written many times, it will make all the training data from all the stocks
 # Path will be where the csv file with all the data will be saved
-def generate_and_save_all_training_data(tickers_list: list[str], filename: str = "full_training_data.csv"):
+def generate_and_save_all_training_data(tickers_list: list[str], filename: str = "full_training_data.csv",
+                                        path: str = os.pardir + "/data/individual_stock_data/"):
     all_training_data = get_all_tickers_training_data(tickers_list)
     print(all_training_data)
     print("Type: {}".format(type(all_training_data)))
